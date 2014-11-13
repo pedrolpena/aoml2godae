@@ -4,6 +4,7 @@ The linkArgoFiles script iterates through AOML's ftp argo data folder creating h
 to these files in locations that mimics GODAE's ftp argo data directory structure.
 Hard links allow multiple files to point to the same data avoiding the multiple copies.
 The original files can be deleted after the links are created and the data will not be lost.
+This script has to be run where the files are located so it runs on AOML's public ftp server.
 
 Currently the script will list and link files that are 5 days old or younger from the time it is run.
 The script logs links created and deleted in a log file named "linkArgoFiles.log"
