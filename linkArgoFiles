@@ -1,0 +1,69 @@
+#!/bin/bash
+
+
+
+[[ "$(pgrep -x $(basename $0))" != "$$" ]] && exit 1  # check if script is already running and exit if it is
+
+sourceDirectory="/opt/ftp/phod/pub/ARGO_FTP/argo/nc"
+targetDirectory="/opt/ftp/phod/pub/ARGO_FTP/argo/Nu_nc"
+logDir="/opt/ftp/phod/pub/pena/NU_nc_logs/"
+
+OIFS=$IFS
+hardLink=""
+existingLink=0
+fileCount=0
+notUpdated=0
+institutionName=""
+echo -n "starting script " >> $logDir/linkArgoFiles.log
+date >> $logDir/linkArgoFiles.log
+for entry in `find $sourceDirectory -type f -mtime -5 -name '*' | grep -v 'tmp' `; do # list files this way to circumvent large list problems
+
+    fileName=`basename $entry`
+    IFS="_"
+    dataFile=($fileName)
+    serialNumber=${dataFile[0]}
+    IFS=$OIFS
+    institutionName=${entry#$sourceDirectory}
+    institutionName=${institutionName%$fileName}
+
+    if [ "${serialNumber:0:1}" == "R" ]; then
+        serialNumber=${serialNumber:1}
+        hardLink=$targetDirectory$institutionName$serialNumber/"profiles"/"$fileName"
+    else
+        hardLink=$targetDirectory$institutionName$serialNumber/"$fileName"
+    fi
+ 
+
+    if [ ! -d "$targetDirectory$institutionName" ]; then
+        mkdir $targetDirectory$institutionName
+    fi    
+
+    if [ ! -d "$targetDirectory$institutionName$serialNumber" ]; then
+        mkdir $targetDirectory$institutionName$serialNumber
+        mkdir $targetDirectory$institutionName$serialNumber/"profiles"
+    fi
+
+
+    if [ ! -f $hardLink ]; then
+        ln "$entry" "$hardLink"
+        fileCount=$((fileCount+1))
+
+    elif [ ! "$entry" -ef "$hardLink" ]; then
+        rm -f "$hardLink"
+        ln "$entry" "$hardLink" 
+        existingLink=$((existingLink+1))
+    else
+        notUpdated=$((notUpdated+1))
+    fi
+
+ 
+  
+done
+
+echo -n "stopping script " >> $logDir/linkArgoFiles.log
+date >> $logDir/linkArgoFiles.log
+echo $fileCount" new links were created" >> $logDir/linkArgoFiles.log
+echo $existingLink" links were updated because the inode numbers did not match" >> $logDir/linkArgoFiles.log
+echo $((fileCount+existingLink))" total links made">>$logDir/linkArgoFiles.log
+echo $notUpdated" files were not updated because the inode numbers matched">>$logDir/linkArgoFiles.log
+
